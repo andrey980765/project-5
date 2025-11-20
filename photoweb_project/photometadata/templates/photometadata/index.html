@@ -1,0 +1,52 @@
+{% extends "photometadata/base.html" %}
+{% load static %}
+
+{% block content %}
+  {% if messages %}
+    <div class="alert-messages mb-3">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="row">
+    <!-- Форма добавления вручную -->
+    <div class="col-md-6">
+      <div class="card shadow p-3 mb-4">
+        <h4 class="mb-3">Добавить метаданные вручную</h4>
+        <form method="post">
+          {% csrf_token %}
+          {{ form.as_p }}
+
+          <!-- Две кнопки: сохраняют в разные места через value -->
+          <div class="d-grid gap-2">
+            <button type="submit" name="save_metadata" value="file" class="btn btn-primary">Сохранить в JSON</button>
+            <button type="submit" name="save_metadata" value="db" class="btn btn-outline-dark">Сохранить в БД</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Загрузка JSON -->
+    <div class="col-md-6">
+      <div class="card shadow p-3 mb-4">
+        <h4 class="mb-3">Загрузить JSON файл</h4>
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          {{ upload_form.as_p }}
+          <button type="submit" name="upload_file" class="btn btn-success w-100 mt-2">Загрузить файл</button>
+        </form>
+      </div>
+
+      <div class="card shadow p-3 mt-4">
+        <h4 class="mb-3">Просмотр данных</h4>
+        <div class="d-grid gap-2">
+          <a href="{% url 'photometadata:view_source' source='file' %}" class="btn btn-outline-secondary">Из файлов JSON</a>
+          <a href="{% url 'photometadata:view_source' source='db' %}" class="btn btn-outline-dark">Из базы данных</a>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+

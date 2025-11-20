@@ -1,0 +1,191 @@
+{% extends "photometadata/base.html" %}
+{% load static %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Данные из базы</h2>
+
+  <!-- Поле поиска -->
+  <div class="mb-3">
+    <input id="searchInput" class="form-control" placeholder="Поиск (title, photographer, tags...)">
+  </div>
+
+  <!-- Таблица результатов -->
+  <div id="searchResults">
+    <table class="table table-striped table-hover align-middle">
+      <thead>
+        <tr>
+          <th>Название</th>
+          <th>Фотограф</th>
+          <th>Дата</th>
+          <th>Локация</th>
+          <th>Камера</th>
+          <th>Размер (W×H)</th>
+          <th>Лицензия</th>
+          <th>Теги</th>
+          <th>Ссылка</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody id="resultsBody">
+        {% for it in items %}
+          <tr data-id="{{ it.id }}">
+            <td>{{ it.title }}</td>
+            <td>{{ it.photographer }}</td>
+            <td>{{ it.date_taken }}</td>
+            <td>{{ it.location }}</td>
+            <td>{{ it.camera }}</td>
+            <td>{{ it.width }}×{{ it.height }}</td>
+            <td>{{ it.license }}</td>
+            <td>{{ it.tags }}</td>
+            <td>
+              <a href="{{ it.url }}" target="_blank">
+                <img src="{{ it.url }}" alt="preview" style="width:60px;height:auto;border-radius:6px;">
+              </a>
+            </td>
+            <td>
+              <button class="btn btn-sm btn-primary edit-btn" data-id="{{ it.id }}">Редактировать</button>
+              <button class="btn btn-sm btn-danger delete-btn" data-id="{{ it.id }}">Удалить</button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Модальное окно для редактирования -->
+<div class="modal" id="editModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content p-3">
+      <div class="modal-header">
+        <h5 class="modal-title">Редактировать запись</h5>
+        <button type="button" class="btn-close" id="closeModal"></button>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <!-- Форма будет заполняться через JavaScript -->
+        <form id="editForm"></form>
+      </div>
+      <div class="modal-footer">
+        <button id="saveEditBtn" class="btn btn-success">Сохранить</button>
+        <button id="cancelEditBtn" class="btn btn-secondary">Отмена</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- Настройка CSRF ---
+const csrftoken = '{{ csrf_token }}';
+function csrfHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'X-CSRFToken': csrftoken
+  };
+}
+
+// --- AJAX ПОИСК ---
+document.getElementById('searchInput').addEventListener('input', async function(e){
+  const q = e.target.value;
+  const res = await fetch("{% url 'photometadata:db_search_ajax' %}", {
+    method: 'POST',
+    headers: csrfHeaders(),
+    body: JSON.stringify({q})
+  });
+  const data = await res.json();
+  const tbody = document.getElementById('resultsBody');
+  tbody.innerHTML = '';
+  for (const r of data.results) {
+    const tr = document.createElement('tr');
+    tr.dataset.id = r.id;
+    tr.innerHTML = `
+      <td>${r.title}</td>
+      <td>${r.photographer}</td>
+      <td>${r.date_taken}</td>
+      <td>${r.location}</td>
+      <td>${r.camera}</td>
+      <td>${r.width}×${r.height}</td>
+      <td>${r.license}</td>
+      <td>${r.tags}</td>
+      <td><a href="${r.url}" target="_blank"><img src="${r.url}" style="width:60px;height:auto;border-radius:6px;"></a></td>
+      <td>
+        <button class="btn btn-sm btn-primary edit-btn" data-id="${r.id}">Редактировать</button>
+        <button class="btn btn-sm btn-danger delete-btn" data-id="${r.id}">Удалить</button>
+      </td>`;
+    tbody.appendChild(tr);
+  }
+});
+
+// --- ОБРАБОТКА КНОПОК "Редактировать" и "Удалить" ---
+document.getElementById('resultsBody').addEventListener('click', async function(e){
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  const id = btn.dataset.id;
+
+  // Редактирование
+  if(btn.classList.contains('edit-btn')) {
+    const r = await fetch("{% url 'photometadata:db_get_ajax' 0 %}".replace('/0/', `/${id}/`));
+    const obj = await r.json();
+
+    // Заполняем форму
+    const form = document.getElementById('editForm');
+    form.innerHTML = `
+      <input type="hidden" name="id" value="${obj.id}">
+      <div class="row g-2">
+        <div class="col-md-6 mb-2"><label>Название</label><input name="title" class="form-control" value="${obj.title}"></div>
+        <div class="col-md-6 mb-2"><label>Фотограф</label><input name="photographer" class="form-control" value="${obj.photographer}"></div>
+        <div class="col-md-6 mb-2"><label>Дата съёмки</label><input type="date" name="date_taken" class="form-control" value="${obj.date_taken}"></div>
+        <div class="col-md-6 mb-2"><label>URL изображения</label><input name="url" class="form-control" value="${obj.url}"></div>
+        <div class="col-md-12 mb-2"><label>Описание</label><textarea name="description" class="form-control">${obj.description}</textarea></div>
+        <div class="col-md-6 mb-2"><label>Локация</label><input name="location" class="form-control" value="${obj.location}"></div>
+        <div class="col-md-6 mb-2"><label>Камера</label><input name="camera" class="form-control" value="${obj.camera}"></div>
+        <div class="col-md-6 mb-2"><label>Ширина</label><input type="number" name="width" class="form-control" value="${obj.width}"></div>
+        <div class="col-md-6 mb-2"><label>Высота</label><input type="number" name="height" class="form-control" value="${obj.height}"></div>
+        <div class="col-md-6 mb-2"><label>Лицензия</label><input name="license" class="form-control" value="${obj.license}"></div>
+        <div class="col-md-6 mb-2"><label>Теги</label><input name="tags" class="form-control" value="${obj.tags}"></div>
+      </div>`;
+    document.getElementById('editModal').style.display = 'block';
+  }
+
+  // Удаление
+  else if(btn.classList.contains('delete-btn')) {
+    if(!confirm('Удалить запись?')) return;
+    const res = await fetch("{% url 'photometadata:db_delete_ajax' 0 %}".replace('/0/', `/${id}/`), {
+      method: 'POST',
+      headers: csrfHeaders()
+    });
+    const j = await res.json();
+    if(j.ok) btn.closest('tr').remove();
+    else alert('Ошибка удаления');
+  }
+});
+
+// --- СОХРАНЕНИЕ ИЗМЕНЕНИЙ ---
+document.getElementById('saveEditBtn').addEventListener('click', async function() {
+  const form = document.getElementById('editForm');
+  const formData = Object.fromEntries(new FormData(form));
+
+  const id = formData.id;
+  delete formData.id;
+
+  const res = await fetch("{% url 'photometadata:db_update_ajax' 0 %}".replace('/0/', `/${id}/`), {
+    method: 'POST',
+    headers: csrfHeaders(),
+    body: JSON.stringify(formData)
+  });
+  const data = await res.json();
+
+  if (data.ok) {
+    alert('Изменения сохранены!');
+    location.reload();
+  } else {
+    alert(data.error || 'Ошибка сохранения');
+  }
+});
+
+// --- Закрытие модального окна ---
+document.getElementById('closeModal').addEventListener('click', () => {
+  document.getElementById('editModal').style.display = 'none';
+});
+
+</script>
+{% endblock %}

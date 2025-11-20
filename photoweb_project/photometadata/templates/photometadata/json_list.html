@@ -1,0 +1,18 @@
+{% extends "photometadata/base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Список JSON-файлов</h2>
+    <ul class="list-group mt-3">
+        {% for filename in files %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            {{ filename }}
+            <a href="{% url 'photometadata:view_source_file' source='file' filename=filename %}" class="btn btn-primary">Открыть</a>
+        </li>
+        {% empty %}
+        <li class="list-group-item">Нет доступных JSON-файлов</li>
+        {% endfor %}
+    </ul>
+    <a href="{% url 'photometadata:index' %}" class="btn btn-secondary mt-3">Главная</a>
+</div>
+{% endblock %}
+

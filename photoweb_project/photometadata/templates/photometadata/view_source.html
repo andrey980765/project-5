@@ -1,0 +1,314 @@
+{% extends "photometadata/base.html" %}
+{% load static %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Просмотр данных {% if filename %} ({{ filename }}){% endif %}</h2>
+    <p><strong>Источник:</strong> {% if source_type == 'db' %}База данных{% else %}JSON файл{% endif %}</p>
+
+    {% if source_type == 'db' %}
+      <div class="mb-3">
+        <input type="text" id="search-input" class="form-control" placeholder="Поиск по базе данных...">
+      </div>
+    {% endif %}
+
+    <table class="table table-striped align-middle">
+      <thead>
+        <tr>
+          <th>Название</th>
+          <th>Фотограф</th>
+          <th>Дата</th>
+          <th>Описание</th>
+          <th>Местоположение</th>
+          <th>Камера</th>
+          <th>Лицензия</th>
+          <th>Ширина</th>
+          <th>Высота</th>
+          <th>Теги</th>
+          <th>Изображение</th>
+          {% if source_type == 'db' %}<th>Действия</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody id="data-body">
+        {% for item in data %}
+          <tr data-id="{{ item.id|default:'' }}">
+            <td>{{ item.title }}</td>
+            <td>{{ item.photographer }}</td>
+            <td>{{ item.date_taken }}</td>
+            <td>{{ item.description }}</td>
+            <td>{{ item.location }}</td>
+            <td>{{ item.camera }}</td>
+            <td>{{ item.license }}</td>
+            <td>{{ item.width }}</td>
+            <td>{{ item.height }}</td>
+            <td>{{ item.tags }}</td>
+            <td>
+              {% if item.url %}
+                <a href="{{ item.url }}" target="_blank">
+                  <img src="{{ item.url }}" alt="{{ item.title }}" style="max-width:100px; border-radius:6px;">
+                </a>
+              {% else %}—{% endif %}
+            </td>
+            {% if source_type == 'db' %}
+            <td>
+              <button class="btn btn-sm btn-warning edit-btn" data-id="{{ item.id }}">Редактировать</button>
+              <button class="btn btn-sm btn-danger delete-btn" data-id="{{ item.id }}">Удалить</button>
+            </td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <a href="{% url 'photometadata:json_list' %}" class="btn btn-secondary mt-3">Вернуться к списку файлов</a>
+</div>
+
+{% if source_type == 'db' %}
+<!-- ======= МОДАЛЬНОЕ ОКНО РЕДАКТИРОВАНИЯ ======= -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Редактирование записи</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editForm">
+          <input type="hidden" id="edit-id">
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label">Название</label>
+              <input type="text" id="edit-title" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Фотограф</label>
+              <input type="text" id="edit-photographer" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Дата</label>
+              <input type="date" id="edit-date" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Местоположение</label>
+              <input type="text" id="edit-location" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Камера</label>
+              <input type="text" id="edit-camera" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Лицензия</label>
+              <input type="text" id="edit-license" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Ширина</label>
+              <input type="number" id="edit-width" class="form-control" required min="1">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Высота</label>
+              <input type="number" id="edit-height" class="form-control" required min="1">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Теги</label>
+              <input type="text" id="edit-tags" class="form-control" placeholder="Например: природа, город" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Описание</label>
+              <textarea id="edit-description" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label">URL изображения</label>
+              <input type="text" id="edit-url" class="form-control">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button class="btn btn-primary" id="saveEditBtn">Сохранить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const csrftoken = '{{ csrf_token }}';
+
+// ======= ПОИСК =======
+document.getElementById('search-input').addEventListener('input', function() {
+    const q = this.value.trim();
+    const url = "{% url 'photometadata:db_search_ajax' %}";
+    const body = document.getElementById('data-body');
+
+    // 🔹 Если поле пустое — просто подгружаем все записи
+    if (q === "") {
+        fetch("{% url 'photometadata:db_view_ajax' %}") // создаем отдельный endpoint для "все данные"
+        .then(r => r.json())
+        .then(data => {
+            body.innerHTML = "";
+            for (const item of data.results) {
+                const row = `
+                    <tr data-id="${item.id}">
+                        <td>${item.title}</td>
+                        <td>${item.photographer}</td>
+                        <td>${item.date_taken}</td>
+                        <td>${item.description}</td>
+                        <td>${item.location}</td>
+                        <td>${item.camera}</td>
+                        <td>${item.license}</td>
+                        <td>${item.width}</td>
+                        <td>${item.height}</td>
+                        <td>${item.tags}</td>
+                        <td><a href="${item.url}" target="_blank"><img src="${item.url}" style="max-width:100px;border-radius:6px;"></a></td>
+                        <td>
+                            <button class="btn btn-sm btn-warning edit-btn" data-id="${item.id}">Ред.</button>
+                            <button class="btn btn-sm btn-danger delete-btn" data-id="${item.id}">Удал.</button>
+                        </td>
+                    </tr>`;
+                body.insertAdjacentHTML('beforeend', row);
+            }
+        });
+        return;
+    }
+
+    // 🔹 Иначе — обычный поиск
+    fetch(url, {
+        method: "POST",
+        headers: {"Content-Type": "application/json", "X-CSRFToken": csrftoken},
+        body: JSON.stringify({ q })
+    })
+    .then(r => r.json())
+    .then(data => {
+        body.innerHTML = "";
+        for (const item of data.results) {
+            const row = `
+                <tr data-id="${item.id}">
+                    <td>${item.title}</td>
+                    <td>${item.photographer}</td>
+                    <td>${item.date_taken}</td>
+                    <td>${item.description}</td>
+                    <td>${item.location}</td>
+                    <td>${item.camera}</td>
+                    <td>${item.license}</td>
+                    <td>${item.width}</td>
+                    <td>${item.height}</td>
+                    <td>${item.tags}</td>
+                    <td><a href="${item.url}" target="_blank"><img src="${item.url}" style="max-width:100px;border-radius:6px;"></a></td>
+                    <td>
+                        <button class="btn btn-sm btn-warning edit-btn" data-id="${item.id}">Ред.</button>
+                        <button class="btn btn-sm btn-danger delete-btn" data-id="${item.id}">Удал.</button>
+                    </td>
+                </tr>`;
+            body.insertAdjacentHTML('beforeend', row);
+        }
+    });
+});
+
+// ======= AJAX УДАЛЕНИЕ =======
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('delete-btn')) {
+    const id = e.target.dataset.id;
+    if (confirm('Удалить запись?')) {
+      fetch("{% url 'photometadata:db_delete_ajax' 0 %}".replace('/0/', `/${id}/`), {
+        method: "POST",
+        headers: {"X-CSRFToken": csrftoken}
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) e.target.closest('tr').remove();
+        else alert('Ошибка при удалении');
+      });
+    }
+  }
+});
+
+// ======= AJAX РЕДАКТИРОВАНИЕ =======
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('edit-btn')) {
+    const id = e.target.dataset.id;
+    fetch("{% url 'photometadata:db_get_ajax' 0 %}".replace('/0/', `/${id}/`))
+    .then(r => r.json())
+    .then(item => {
+      // Заполняем поля модального окна
+      document.getElementById('edit-id').value = item.id;
+      document.getElementById('edit-title').value = item.title || '';
+      document.getElementById('edit-photographer').value = item.photographer || '';
+      document.getElementById('edit-date').value = item.date_taken || '';
+      document.getElementById('edit-description').value = item.description || '';
+      document.getElementById('edit-location').value = item.location || '';
+      document.getElementById('edit-camera').value = item.camera || '';
+      document.getElementById('edit-license').value = item.license || '';
+      document.getElementById('edit-url').value = item.url || '';
+      document.getElementById('edit-tags').value = item.tags || '';
+      document.getElementById('edit-width').value = item.width || 1;
+      document.getElementById('edit-height').value = item.height || 1;
+
+      const modal = new bootstrap.Modal(document.getElementById('editModal'));
+      const saveBtn = document.getElementById('saveEditBtn');
+      saveBtn.dataset.id = item.id; // Привязали ID к кнопке
+      modal.show();
+    });
+  }
+});
+
+// ======= AJAX СОХРАНЕНИЕ =======
+document.getElementById('saveEditBtn').addEventListener('click', function() {
+  const id = this.dataset.id;
+
+  const data = {
+    title: document.getElementById("edit-title").value.trim(),
+    photographer: document.getElementById("edit-photographer").value.trim(),
+    date_taken: document.getElementById("edit-date").value.trim(),
+    description: document.getElementById("edit-description").value.trim(),
+    location: document.getElementById("edit-location").value.trim(),
+    camera: document.getElementById("edit-camera").value.trim(),
+    license: document.getElementById("edit-license").value.trim(),
+    tags: document.getElementById("edit-tags").value.trim(),
+    url: document.getElementById("edit-url").value.trim(),
+    width: parseInt(document.getElementById("edit-width").value) || 1,
+    height: parseInt(document.getElementById("edit-height").value) || 1
+  };
+
+  fetch(`/ajax/update/${id}/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": csrftoken,
+    },
+    body: JSON.stringify(data),
+  })
+  .then(r => r.json())
+  .then(res => {
+    if (res.ok) {
+      // обновляем строку таблицы
+      const row = document.querySelector(`tr[data-id="${id}"]`);
+      if (row) {
+        row.children[0].textContent = res.item.title;
+        row.children[1].textContent = res.item.photographer;
+        row.children[2].textContent = res.item.date_taken;
+        row.children[3].textContent = res.item.description;
+        row.children[4].textContent = res.item.location;
+        row.children[5].textContent = res.item.camera;
+        row.children[6].textContent = res.item.license;
+        row.children[7].textContent = res.item.width;
+        row.children[8].textContent = res.item.height;
+        row.children[9].textContent = res.item.tags;
+        const img = row.querySelector("img");
+        if (img) img.src = res.item.url;
+      }
+      bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+      alert("Изменения сохранены!");
+    } else {
+      alert("Ошибка при сохранении: " + (res.error || "неизвестная ошибка"));
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert("Ошибка соединения при сохранении.");
+  });
+});
+</script>
+
+
+{% endif %}
+{% endblock %}
+

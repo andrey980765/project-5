@@ -1,0 +1,210 @@
+/* ======== Общие стили ======== */
+body {
+    font-family: "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: radial-gradient(circle at 20% 30%, #0a0a20, #000010 70%);
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: fadeInBody 1.2s ease-in-out;
+}
+
+/* ======== Заголовок и навигация ======== */
+header {
+    text-align: center;
+    padding: 30px 0 10px 0;
+    animation: fadeIn 1s ease-in-out;
+}
+
+h1 {
+    font-size: 2.4rem;
+    background: linear-gradient(90deg, #7f00ff, #e100ff, #0077ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 20px;
+}
+
+/* ======== Меню ======== */
+nav ul {
+    list-style: none;
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+    padding: 0;
+    margin: 0;
+}
+
+nav li {
+    display: inline-block;
+}
+
+nav a {
+    text-decoration: none;
+    color: #d0d0ff;
+    font-weight: 500;
+    padding: 10px 22px;
+    border-radius: 30px;
+    border: 1px solid rgba(127, 0, 255, 0.4);
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+    box-shadow: 0 0 10px rgba(127, 0, 255, 0.1);
+}
+
+nav a:hover {
+    background: linear-gradient(135deg, #7f00ff, #0077ff);
+    color: #fff;
+    box-shadow: 0 0 20px rgba(127, 0, 255, 0.5);
+    transform: scale(1.07);
+}
+
+/* ======== Контейнер карточек ======== */
+.cards-container {
+    display: flex;
+    justify-content: center;       /* центрируем по горизонтали */
+    align-items: flex-start;       /* выравниваем по верхней линии */
+    gap: 40px;                     /* расстояние между карточками */
+    margin: 60px auto;
+    max-width: 1000px;             /* ограничиваем ширину блока */
+    flex-wrap: nowrap;             /* карточки в одну строку */
+    animation: fadeIn 1.5s ease;
+}
+
+/* ======== Карточки ======== */
+.card {
+    background: rgba(20, 20, 40, 0.8);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 0 25px rgba(128, 0, 255, 0.2);
+    backdrop-filter: blur(12px);
+    flex: 0 1 420px;               /* фиксируем примерную ширину */
+    max-width: 440px;
+    transition: all 0.3s ease;
+    opacity: 0;
+    animation: fadeSlideUp 1.2s ease forwards;
+}
+
+.card:nth-child(1) {
+    animation-delay: 0.3s;
+}
+.card:nth-child(2) {
+    animation-delay: 0.6s;
+}
+
+.card:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 0 35px rgba(127, 0, 255, 0.5);
+}
+
+.card h2 {
+    color: #a0a0ff;
+    text-align: center;
+    margin-bottom: 20px;
+    text-shadow: 0 0 8px rgba(160, 160, 255, 0.5);
+}
+
+/* ======== Формы ======== */
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+input[type="text"],
+input[type="file"],
+select,
+textarea {
+    padding: 10px;
+    border-radius: 10px;
+    border: none;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    transition: 0.3s ease;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 10px rgba(127, 0, 255, 0.4);
+}
+
+button {
+    background: linear-gradient(135deg, #7f00ff, #0077ff);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+button:hover {
+    transform: scale(1.05);
+    background: linear-gradient(135deg, #e100ff, #0077ff);
+    box-shadow: 0 0 20px rgba(127, 0, 255, 0.6);
+}
+
+/* ======== Анимации ======== */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInBody {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeSlideUp {
+    0% { opacity: 0; transform: translateY(30px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ======== Основной контейнер ======== */
+main {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.file-list {
+  list-style: none;      /* убираем маркеры */
+  padding: 0;
+  margin: 0 0 20px 0;    /* отступ снизу между списками */
+}
+
+.file-list li {
+  margin: 6px 0;
+}
+
+.file-list li a {
+  color: #aeefff;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.file-list li a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+/* ======== Для узких экранов ======== */
+@media (max-width: 950px) {
+    .cards-container {
+        flex-wrap: wrap;         /* карточки переходят в колонку */
+        justify-content: center;
+        gap: 25px;
+        margin-top: 40px;
+    }
+
+    .card {
+        width: 90%;
+        max-width: 500px;
+    }
+}
