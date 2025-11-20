@@ -26,9 +26,8 @@ services:
     env_file:
       - .env
     environment:
-      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE}
+      - DJANGO_SETTINGS_MODULE=photoweb_project.settings
     volumes:
-      - ./:/app 
       - static_volume:/app/staticfiles
       - media_volume:/app/media
     ports:
