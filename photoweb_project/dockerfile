@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libjpeg-dev \
     zlib1g-dev \
     gettext \
+    postgresql-client \
  && rm -rf /var/lib/apt/lists/*
 
 # скопировать только зависимости сначала (кэширование слоёв)
@@ -27,6 +28,11 @@ RUN pip install -r /app/requirements.txt
 # скопировать проект
 COPY . /app
 
+# создаём папки медиа и статик и даем права
+RUN mkdir -p /app/media/json && \
+    mkdir -p /app/staticfiles && \
+    chmod -R 777 /app/media /app/staticfiles
+    
 # сделать исполняемым entrypoint
 COPY ./docker/entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
